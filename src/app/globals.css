@@ -1,26 +1,105 @@
 @import "tailwindcss";
 
+/* Dark mode por atributo: o script em layout.tsx aplica data-theme a partir
+   da preferência salva ou do sistema, antes da pintura. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --bg: #f6f6f4;
+  --surface: #ffffff;
+  --surface-2: #f0efec;
+  --border: #e4e3df;
+  --fg: #0b0b0b;
+  --fg-2: #52514e;
+  --fg-3: #7a7974;
+  --accent: #2a78d6;
+
+  /* Séries (categóricas, ordem fixa) */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #4a3aa7;
+  --series-8: #e34948;
+  --series-other: #a3a29c; /* "Outros": neutro, nunca uma cor de série */
+
+  /* Status — sempre acompanhados de ícone + texto */
+  --good: #0a7d0a;
+  --critical: #c73434;
+  --warning: #b77900;
+  --good-soft: #e7f4e7;
+  --critical-soft: #fbeaea;
+  --warning-soft: #fdf3dc;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111110;
+  --surface: #1a1a19;
+  --surface-2: #242422;
+  --border: #2e2e2b;
+  --fg: #f5f5f3;
+  --fg-2: #c3c2b7;
+  --fg-3: #8d8c84;
+  --accent: #3987e5;
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+  --series-other: #6d6c66;
+
+  --good: #3fc23f;
+  --critical: #f07070;
+  --warning: #f2b52e;
+  --good-soft: #15291a;
+  --critical-soft: #2f1818;
+  --warning-soft: #2e2512;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-fg-3: var(--fg-3);
+  --color-accent: var(--accent);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
+  --color-series-4: var(--series-4);
+  --color-series-5: var(--series-5);
+  --color-series-6: var(--series-6);
+  --color-series-7: var(--series-7);
+  --color-series-8: var(--series-8);
+  --color-series-other: var(--series-other);
+  --color-good: var(--good);
+  --color-critical: var(--critical);
+  --color-warning: var(--warning);
+  --color-good-soft: var(--good-soft);
+  --color-critical-soft: var(--critical-soft);
+  --color-warning-soft: var(--warning-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }

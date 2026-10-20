@@ -1,0 +1,234 @@
+// Todos os valores monetários são armazenados em CENTAVOS (Int) para evitar
+// erros de arredondamento de ponto flutuante. Ex.: R$ 1.234,56 => 123456
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ─── Enums ──────────────────────────────────────────────────────────────────
+
+enum IncomeType {
+  SALARY // Salário líquido
+  FREELANCE // Freelas
+  YIELD // Rendimentos (juros, dividendos)
+  OTHER
+}
+
+enum ExpenseType {
+  FIXED // Fixo
+  VARIABLE // Variável
+}
+
+enum ExpenseStatus {
+  PAID // Pago
+  PENDING // Pendente
+}
+
+enum InvestmentTxType {
+  APORTE // Entrada / Aporte (+)
+  RESGATE // Saída / Resgate (-)
+  RENDIMENTO // Rendimento (+) ou desvalorização (-): valor com sinal
+}
+
+enum RecurrenceMode {
+  CONTINUOUS // todo mês, com ou sem data de término
+  INSTALLMENTS // parcelada: N parcelas
+}
+
+enum AssetType {
+  STOCKS // Ações
+  REITS // FIIs
+  FIXED_INCOME // Renda Fixa
+  EMERGENCY_RESERVE // Reserva de Emergência
+}
+
+// ─── Models ─────────────────────────────────────────────────────────────────
+
+model User {
+  id    String @id @default(cuid())
+  name  String
+  email String @unique
+
+  // Limite mensal planejado para custos variáveis. Quando nulo, a projeção
+  // usa a média dos últimos 3 meses.
+  variableBudgetCents Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  incomes       Income[]
+  expenses      Expense[]
+  expenseSeries ExpenseSeries[]
+  investments   Investment[]
+  creditLetters CreditLetter[]
+}
+
+model Income {
+  id          String     @id @default(cuid())
+  userId      String
+  description String
+  amountCents Int
+  type        IncomeType @default(SALARY)
+  date        DateTime
+  // false = renda prevista (ainda não caiu na conta)
+  received    Boolean    @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+}
+
+model Expense {
+  id          String        @id @default(cuid())
+  userId      String
+  description String
+  amountCents Int
+  category    String // aluguel, condomínio, luz, mercado, lazer...
+  type        ExpenseType
+  status      ExpenseStatus @default(PENDING)
+  dueDate     DateTime
+  paidAt      DateTime?
+  // Entra no "Custo de Vida Real" (moradia, contas, mercado, transporte...)
+  essential   Boolean       @default(true)
+
+  // Despesa recorrente/parcelada: cada mês tem sua própria linha (para
+  // marcar pago/pendente mês a mês), ligada à série que a gera.
+  seriesId          String?
+  installmentNumber Int? // só em séries parceladas: 1..totalInstallments
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  series ExpenseSeries? @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+
+  @@index([seriesId, dueDate])
+  @@index([userId, dueDate])
+  @@index([userId, type, status])
+}
+
+model Investment {
+  id                       String    @id @default(cuid())
+  userId                   String
+  name                     String // ex.: "Tesouro Selic 2029", "MXRF11"
+  assetType                AssetType
+  institution              String?
+  // Saldo = Σ aportes − Σ resgates (cópia da soma de todas as transações,
+  // mantida pelas server actions; o saldo numa data vem das transações).
+  balanceCents             Int       @default(0)
+  monthlyContributionCents Int       @default(0) // aporte mensal planejado
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions InvestmentTransaction[]
+
+  @@index([userId, assetType])
+}
+
+model CreditLetter {
+  id                String  @id @default(cuid())
+  userId            String
+  name              String // ex.: "Consórcio Imóvel - Porto"
+  administrator     String?
+  creditValueCents  Int // valor da carta de crédito (original)
+  totalInstallments Int?
+
+  // Valores vigentes no período mais recente (cópia do último
+  // CreditLetterPeriod, mantida em sincronia pelas server actions).
+  correctedCreditCents Int? // crédito corrigido após reajustes
+  paidCents            Int     @default(0) // valor pago acumulado
+  outstandingCents     Int // saldo devedor
+  installmentCents     Int // parcela mensal
+  paidInstallments     Int     @default(0)
+  dueDay               Int     @default(10) // dia de vencimento da parcela
+  contemplated         Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periods CreditLetterPeriod[]
+}
+
+// Retrato dos valores de um consórcio em um mês. Parcela, crédito corrigido,
+// pago acumulado e saldo devedor mudam com os reajustes; para um mês
+// qualquer vale o retrato mais recente até ele (os valores "se arrastam"
+// até o próximo reajuste).
+model CreditLetterPeriod {
+  id             String @id @default(cuid())
+  creditLetterId String
+  period         Int // AAAAMM, ex.: 202610 (facilita ordenar e comparar)
+
+  correctedCreditCents Int?
+  paidCents            Int
+  outstandingCents     Int
+  installmentCents     Int
+  paidInstallments     Int
+  // Parcela deste mês já registrada como paga
+  installmentPaid      Boolean   @default(false)
+  // Dia em que a parcela foi registrada (para o filtro por data)
+  installmentPaidAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creditLetter CreditLetter @relation(fields: [creditLetterId], references: [id], onDelete: Cascade)
+
+  @@unique([creditLetterId, period])
+}
+
+// Movimentação de um investimento. APORTE e RESGATE têm valor positivo (o tipo
+// dá o sinal); RENDIMENTO guarda o valor com sinal (negativo = desvalorização).
+model InvestmentTransaction {
+  id           String           @id @default(cuid())
+  investmentId String
+  type         InvestmentTxType
+  amountCents  Int
+  date         DateTime
+  note         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  investment Investment @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+
+  @@index([investmentId, date])
+}
+
+// Modelo de uma despesa que se repete. As linhas mensais (Expense) são criadas
+// automaticamente quando um mês é aberto, de startPeriod até endPeriod.
+model ExpenseSeries {
+  id          String         @id @default(cuid())
+  userId      String
+  mode        RecurrenceMode
+  description String
+  amountCents Int // valor de cada mês / de cada parcela
+  category    String
+  type        ExpenseType
+  essential   Boolean        @default(true)
+  dueDay      Int // dia de vencimento (limitado ao último dia do mês)
+
+  startPeriod       Int // AAAAMM do primeiro mês (parcela 1)
+  endPeriod         Int? // AAAAMM do último mês, inclusive; null = sem término
+  totalInstallments Int? // só em INSTALLMENTS
+  // Meses excluídos individualmente ("excluir só esta"), separados por vírgula
+  skippedPeriods    String @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses Expense[]
+
+  @@index([userId])
+}
