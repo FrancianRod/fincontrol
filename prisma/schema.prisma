@@ -6,8 +6,11 @@ generator client {
   output   = "../src/generated/prisma"
 }
 
+// Supabase (PostgreSQL). No Prisma 7 as URLs não ficam aqui: o CLI usa a
+// DIRECT_URL definida em prisma.config.ts e o app conecta pela DATABASE_URL
+// (pooler) via @prisma/adapter-pg em src/lib/db.ts.
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 // ─── Enums ──────────────────────────────────────────────────────────────────

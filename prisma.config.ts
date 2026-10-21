@@ -7,7 +7,9 @@ export default defineConfig({
     path: "prisma/migrations",
     seed: "tsx prisma/seed.ts",
   },
+  // Migrações e `db seed` (CLI) usam a conexão direta/sessão (porta 5432):
+  // o pooler em modo transação (6543, DATABASE_URL) não suporta migrações.
   datasource: {
-    url: env("DATABASE_URL"),
+    url: env("DIRECT_URL"),
   },
 });

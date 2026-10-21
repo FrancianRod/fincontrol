@@ -2,19 +2,28 @@
 
 Controle financeiro pessoal minimalista para quem mora sozinho: custos fixos e variáveis, renda, patrimônio e projeção de sobra no fim do mês.
 
-**Stack:** Next.js 16 (App Router, Cache Components) · TypeScript · Tailwind CSS 4 · Prisma 7 + SQLite (better-sqlite3 adapter)
+**Stack:** Next.js 16 (App Router, Cache Components) · TypeScript · Tailwind CSS 4 · Prisma 7 + PostgreSQL no Supabase (`@prisma/adapter-pg`)
 
 ## Rodando
 
 ```bash
 npm install            # também roda `prisma generate`
-cp .env.example .env
-npm run db:migrate     # cria prisma/dev.db
-npm run db:seed        # dados de exemplo (4 meses)
+cp .env.example .env   # preencha DATABASE_URL e DIRECT_URL do Supabase
+npm run db:migrate     # aplica as migrações (prisma migrate dev)
+npm run db:seed        # dados de exemplo (4 meses) — APAGA os dados existentes
 npm run dev
 ```
 
 Outros scripts: `db:studio`, `db:reset`.
+
+### Banco (Supabase)
+
+- `DATABASE_URL`: pooler em modo transação (porta 6543, `?pgbouncer=true`), usado pelo app em `src/lib/db.ts` via `@prisma/adapter-pg`.
+- `DIRECT_URL`: pooler em modo sessão (porta 5432), usado pelo CLI (migrações e seed). Fica em `prisma.config.ts`.
+- No Prisma 7 `url`/`directUrl` **não** podem ficar no `schema.prisma` (erro P1012): o schema só declara `provider = "postgresql"`.
+- Importar dados do SQLite antigo: `npx tsx scripts/import-sqlite.ts` (simulação, mostra as contagens) e `--apply` (apaga os dados do Supabase e copia tudo do `prisma/dev.db`, numa transação, mantendo os ids). Usado em 21/10/2026 para levar os dados reais para a nuvem.
+- **RLS ativo** em todas as tabelas (`*_enable_rls`), sem políticas: a API pública do Supabase (chaves anon/authenticated) não lê nem grava nada. O app conecta como `postgres` (BYPASSRLS) e não é afetado. Ao criar uma tabela nova, inclua `ALTER TABLE "..." ENABLE ROW LEVEL SECURITY;` na migração.
+- O histórico de migrações começa em `prisma/migrations/*_init_supabase`. As migrações da época do SQLite estão arquivadas em `prisma/migrations-sqlite/` (não são aplicadas).
 
 ## Estrutura
 
