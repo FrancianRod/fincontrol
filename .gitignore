@@ -45,3 +45,9 @@ next-env.d.ts
 /src/generated/prisma
 /prisma/*.db
 /prisma/*.db-journal
+/prisma/backups/
+
+# dados financeiros pessoais (nunca versionar)
+/scripts/load-real-data-2026-10.ts
+/scripts/update-portfolio-2026-10-21.ts
+*.csv
