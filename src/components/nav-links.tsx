@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, PiggyBank, Receipt, Wallet } from "lucide-react";
+import { LayoutDashboard, PiggyBank, Receipt, Target, Wallet } from "lucide-react";
 
 const nav = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/renda", label: "Renda", icon: Wallet },
   { href: "/despesas", label: "Despesas", icon: Receipt },
   { href: "/patrimonio", label: "Patrimônio", icon: PiggyBank },
+  { href: "/metas", label: "Metas", icon: Target },
 ];
 
 function useIsActive() {
@@ -42,7 +43,7 @@ export function SidebarNav() {
 export function BottomNav() {
   const isActive = useIsActive();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-4 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-5 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
       {nav.map(({ href, label, icon: Icon }) => {
         const active = isActive(href);
         return (
@@ -50,7 +51,7 @@ export function BottomNav() {
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
-            className={`flex flex-col items-center gap-1 py-2.5 text-[11px] ${active ? "font-medium text-fg" : "text-fg-3"}`}
+            className={`flex min-w-0 flex-col items-center gap-1 px-0.5 py-2.5 text-[11px] ${active ? "font-medium text-fg" : "text-fg-3"}`}
           >
             <Icon className="size-5" aria-hidden strokeWidth={active ? 2.25 : 1.75} /> {label}
           </Link>
